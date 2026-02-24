@@ -2,15 +2,15 @@
 
 # Real price
 
-[!alt](1_valor.png)
+![alt](1_valor.png)
 
 #Real Voltage
 
-[!alt](2_tensao.png)
+![alt](2_tensao.png)
 
 #Real Current
 
-[!alt](3_corrente.png)
+![alt](3_corrente.png)
 
 ## 📋 Description
 
