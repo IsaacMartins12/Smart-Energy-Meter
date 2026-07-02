@@ -1,80 +1,127 @@
-# Smart Energy Meter
+# ⚡ Smart Energy Meter
 
-# Real price
+Monitor inteligente de energia elétrica com Arduino e Python. Mede tensão, corrente e potência em tempo real, armazena os dados em banco SQLite e gera relatórios visuais em PDF.
 
-![alt](1_valor.png)
+## 📸 Exemplos de Saída
 
-#Real Voltage
+| Custo Energético | Tensão da Rede | Corrente da Rede |
+|:---:|:---:|:---:|
+| ![Valor](imagens/1_valor.png) | ![Tensão](imagens/2_tensao.png) | ![Corrente](imagens/3_corrente.png) |
 
-![alt](2_tensao.png)
+## 🏗️ Arquitetura
 
-#Real Current
+```
+Arduino (sensores) → Serial USB → Python (coleta + banco) → Gráficos + PDF
+```
 
-![alt](3_corrente.png)
+### Componentes de Hardware
+- Arduino Uno/Nano
+- Sensor de corrente SCT013-030
+- Transformador de tensão (ZMPT101B ou similar)
+- Display LCD I2C 16x2
 
-## 📋 Description
+### Software
+- **Arduino**: Leitura dos sensores e envio via serial
+- **Python**: Coleta de dados, armazenamento, geração de gráficos e relatório PDF
 
-The Smart Energy Meter was a project developed in college, the object is to generate intelligent reports of the electric grid with the help of sensors and a microcontroller.
+## � Estrutura do Projeto
 
-## 🚀 Features
+```
+Smart-Energy-Meter/
+├── arduino/
+│   └── smart_energy_meter.ino   # Firmware do Arduino
+├── src/
+│   ├── __init__.py
+│   ├── serial_reader.py         # Leitura da porta serial
+│   ├── charts.py                # Geração de gráficos
+│   └── pdf_report.py            # Exportação em PDF
+├── data/                        # Banco de dados SQLite (gerado)
+├── output/                      # Gráficos e PDF (gerados)
+├── imagens/                     # Imagens de exemplo
+├── main.py                      # Ponto de entrada principal
+├── requirements.txt             # Dependências Python
+└── README.md
+```
 
-- Real-time measurement of electrical parameters
+## � Como Usar
 
-- Generation of graphs with Python
+### Pré-requisitos
 
-- Use of serial ports
+- Python 3.8+
+- Arduino IDE (para upload do firmware)
+- Cabo USB para comunicação serial
 
-- Work with database
+### Instalação
 
-## 🛠️ Technologies Used
+1. Clone o repositório:
+```bash
+git clone https://github.com/IsaacMartins12/Smart-Energy-Meter.git
+cd Smart-Energy-Meter
+```
 
-- **Python** (base language)
-- **C++** (Arduino programming language)
-- **Arduino** (Microcontroller)
+2. Crie e ative um ambiente virtual:
+```bash
+python -m venv venv
 
-## 📦 Installation
+# Linux/Mac
+source venv/bin/activate
 
-### Requirements
+# Windows
+venv\Scripts\activate
+```
 
-- Python 3.x
-- Arduino and Serial Cable
-- Pyserial 2.X
-- Sqlite 3.x
+3. Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
 
-### Installation Steps
+4. Faça upload do firmware para o Arduino:
+   - Abra `arduino/smart_energy_meter.ino` na Arduino IDE
+   - Ajuste o `VOLT_CAL` com um multímetro como referência
+   - Faça upload para a placa
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/IsaacMartins12/Smart-Energy-Meter
-    ```
+### Execução
 
-2. Create virtual environment:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate # On Windows: venv\Scripts\activate
+```bash
+# Execução completa (leitura serial + gráficos + PDF)
+python main.py
 
+# Especificar porta e número de leituras
+python main.py --port COM5 --readings 100
 
-3. Install dependencies:
-    ```bash
-    python install pyserial sqlite3 matplotlib
+# Gerar gráficos a partir de dados já existentes no banco
+python main.py --skip-serial
+```
 
-4. Run the main app:
-    ```bash
-    python main.py
+### Opções da Linha de Comando
 
-## 🧑‍💻 Contribution
+| Argumento | Padrão | Descrição |
+|-----------|--------|-----------|
+| `--port` | COM3 | Porta serial do Arduino |
+| `--baudrate` | 9600 | Taxa de transmissão |
+| `--readings` | 50 | Número de leituras |
+| `--skip-serial` | - | Pula leitura e usa dados existentes |
 
-We welcome contributions to improve this project. Feel free to submit pull requests or report issues on the [Issues page](https://github.com/IsaacMartins12/Smart-Energy-Meter/issues).
+## 🛠️ Tecnologias
 
-### Contribution Steps
+- **Python 3** — Processamento de dados e geração de relatórios
+- **SQLite** — Armazenamento local dos dados
+- **Matplotlib** — Geração de gráficos
+- **Pillow** — Montagem do PDF
+- **PySerial** — Comunicação com Arduino
+- **C/C++ (Arduino)** — Firmware de leitura dos sensores
+- **EmonLib** — Biblioteca de monitoramento de energia (OpenEnergyMonitor)
 
-1. Fork the project.
-2. Create a branch for your feature (`git checkout -b feature/new-feature`).
-3. Commit your changes (`git commit -am 'Add new feature'`).
-4. Push to the branch (`git push origin feature/new-feature`).
-5. Create a Pull Request with a detailed description of your changes.
+## 📝 Protocolo Serial
 
-## 📜 License
+O Arduino envia dados via serial no formato:
 
-This project is licensed under the [MIT License](LICENSE).
+```
+potencia|tensao|corrente|valor_acumulado|tempo_segundos
+```
 
+Exemplo: `45.2|127.3|0.355|0.0012|15.5`
+
+## 📜 Licença
+
+Este projeto está licenciado sob a [MIT License](LICENSE).
