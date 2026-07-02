@@ -1,137 +1,82 @@
-import sqlite3
-import matplotlib.pyplot as pl
-from PIL import Image
-from glob import glob
-import os
-import serial
+"""
+Smart Energy Meter - Aplicação Principal
 
-# Aqui começa a execucao principal do programa
+Lê dados de sensores via porta serial, armazena em banco de dados SQLite,
+gera gráficos de monitoramento e exporta relatório em PDF.
 
-def gera_grafico () :
+Uso:
+    python main.py [--port COM3] [--readings 50] [--skip-serial]
+"""
 
-  potencia = []
-  corrente = []
-  valor = []
-  tensao = []
-  tempo = []
-  dados_tratados = []
+import argparse
+from pathlib import Path
 
-  cnx = sqlite3.connect('projeto_ion.db')
-  cursor = cnx.cursor()
-
-  comando = "SELECT * FROM Registros"
-
-  dados = cursor.execute(comando)
-
-  dados_lidos = dados.fetchall()
-
-  for i in range(0,len(dados_lidos)) :
-    dados_tratados.append(dados_lidos[i])
-
-  for i in range(0,len(dados_lidos)) :
-    potencia.append(dados_tratados[i][0])
-    tensao.append(dados_tratados[i][1])
-    corrente.append(dados_tratados[i][2])
-    valor.append(dados_tratados[i][3])
-    tempo.append(dados_tratados[i][4])
-
-  # gera gráfico 1
-
-  pl.title("GRÁFICO DE RENDIMENTO")
-  pl.ylim(0, 0.30)
-  pl.xlim(0,tempo[len(tempo)-1])
-  pl.xlabel('Tempo')
-  pl.ylabel('Valor')
-  pl.plot(tempo,valor,color="red") # Responsável por colocar legenda
-  pl.grid(True)   
-  pl.savefig('1_valor.png')
-  pl.close()
-  # gera gráfico 2
-  
-  pl.title("GRÁFICO DE TENSAO DA REDE")
-  pl.ylim(80, 140)
-  pl.xlim(0,tempo[len(tempo)-1])
-  pl.xlabel('Tempo')
-  pl.ylabel('Tensao')
-  pl.plot(tempo,tensao,color="red") # Responsável por colocar legenda
-  pl.grid(True)   
-  pl.savefig('2_tensao.png')
-  pl.close()
-
-  pl.title("GRÁFICO DE CORRENTE DA REDE")
-  pl.ylim(0, 2)
-  pl.xlim(0,tempo[len(tempo)-1])
-  pl.xlabel('Tempo')
-  pl.ylabel('Corrente')
-  pl.plot(tempo,corrente,color="red") # Responsável por colocar legenda
-  pl.grid(True)   
-  pl.savefig('3_corrente.png')
-  pl.close()
+from src.serial_reader import read_serial
+from src.charts import generate_all_charts
+from src.pdf_report import generate_pdf
 
 
-def salva_pdf () :
-  
-  iml = []
+def parse_args() -> argparse.Namespace:
+    """Processa argumentos de linha de comando."""
+    parser = argparse.ArgumentParser(
+        description="Smart Energy Meter - Monitor de energia elétrica"
+    )
+    parser.add_argument(
+        "--port",
+        default="COM3",
+        help="Porta serial do Arduino (padrão: COM3)",
+    )
+    parser.add_argument(
+        "--baudrate",
+        type=int,
+        default=9600,
+        help="Baudrate da comunicação serial (padrão: 9600)",
+    )
+    parser.add_argument(
+        "--readings",
+        type=int,
+        default=50,
+        help="Número de leituras da serial (padrão: 50)",
+    )
+    parser.add_argument(
+        "--skip-serial",
+        action="store_true",
+        help="Pular leitura serial e gerar gráficos com dados existentes",
+    )
+    return parser.parse_args()
 
-  files = glob("*.png")
-  # rgb.save(PDF_FILE, 'PDF', resoultion=100.0)
-  for f in files:
-      print(f)
-      print(f[:-4])
-      newname = f[:-4] + ".png"
-      print(newname)
-      os.rename(f, newname)
-  files = glob("*.png")
-  print(files)
 
-  # rgba = Image.open(PNG_FILE)
-  # To avoid ValueError: cannot save mode RGBA 
+def main() -> None:
+    """Execução principal do programa."""
+    args = parse_args()
 
-  rgba = Image.open(glob("*.png")[0])
-  rgb = Image.new('RGB', rgba.size, (255, 255, 255))  # white background
-  rgb.paste(rgba, mask=rgba.split()[3])               # paste using alpha channel as mask
-  for img in files:
-      rgba2 = Image.open(img)
-      rgb2 = Image.new('RGB', rgba2.size, (255, 255, 255))  # white background
-      rgb2.paste(rgba2, mask=rgba2.split()[3])               # paste using alpha channel as mask
-      iml.append(rgb2)
-  pdf = "PROJETO_ION.pdf"
+    print("=" * 50)
+    print("  Smart Energy Meter")
+    print("=" * 50)
 
-  rgb.save(pdf, "PDF" ,resolution=100.0, save_all=True, append_images=iml)
+    # Etapa 1: Leitura serial (se não pulada)
+    if not args.skip_serial:
+        print("\n[1/3] Lendo dados da porta serial...")
+        read_serial(
+            port=args.port,
+            baudrate=args.baudrate,
+            num_readings=args.readings,
+        )
+    else:
+        print("\n[1/3] Leitura serial pulada (--skip-serial)")
 
-comport = serial.Serial('COM3', 9600)   # Selecione de acordo com a sua COM e Baud Rate
-print ('Serial Iniciada...\n')
+    # Etapa 2: Geração de gráficos
+    print("\n[2/3] Gerando gráficos...")
+    generate_all_charts()
 
-cnx = sqlite3.connect('projeto_ion.db')
-cursor = cnx.cursor()
-cont=0
+    # Etapa 3: Geração do PDF
+    print("\n[3/3] Gerando relatório PDF...")
+    generate_pdf()
 
-try :
-  
- while (cont<50) :  #   Número de leituras da Serial
-   
-  serialValue = str(comport.readline())  # Ler a Serial
-  dados = serialValue.split("|")
-  dados_potencia = dados[0][2::]
-  dados_tensao = dados[1]
-  dados_corrente = dados[2]
-  dados_valor = dados[3]
-  dados_tempo = dados[4][0:4]
-  
-  comando = f'INSERT INTO Registros (Potencia,Tensao,Corrente,Valor,Tempo) VALUES ({dados_potencia},{dados_tensao},{dados_corrente},{dados_valor},{dados_tempo})'
-  cont+=1
-  print(dados)
-  print(cont)
-  cursor.execute(comando)
-  cnx.commit() 
-  
- gera_grafico()  # Funcao que gera os gráficos
-  
- salva_pdf ()  # Funcao que salva as imagens em um pdf
+    print("\n" + "=" * 50)
+    print("  Processo concluído com sucesso!")
+    print("=" * 50)
 
- cursor.close()
- cnx.close()
- comport.close()
 
-except :
-  print("Ocorreu um erro inesperado !")
+if __name__ == "__main__":
+    main()
